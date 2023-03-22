@@ -14,5 +14,7 @@ namespace ByteBankIdentity.Models
     public string Password { get; set; }
     [Required]
     public DateTime CreatedDateTime { get; set; } = DateTime.Now;
+    [Required]
+    public bool Active { get; set; }
   }
 }

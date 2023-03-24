@@ -1,6 +1,16 @@
-﻿namespace ByteBankIdentity.Utils
+﻿using BCrypt.Net;
+
+namespace ByteBankIdentity.Utils
 {
-  public class Security
+ public class Security
+ {
+  public static string HashPassword(string password)
   {
+   return BCrypt.Net.BCrypt.EnhancedHashPassword(password, 14);
   }
+  public static bool VerifyHashedPassword(string password, string enhancedHashPassword)
+  {
+   return BCrypt.Net.BCrypt.EnhancedVerify(password, enhancedHashPassword);
+  }
+ }
 }

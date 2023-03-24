@@ -61,11 +61,18 @@ namespace ByteBankIdentity.Controllers
   {
    if (ModelState.IsValid)
    {
-    if(!Utils.String.InputIsValid(user.Name))
+    if (!Utils.String.InputIsValid(user.Name))
      return View();
 
-    if(!Utils.String.EmailIsValid(user.Email))
+    if (!Utils.String.EmailIsValid(user.Email))
      return View();
+
+    if (string.IsNullOrEmpty(user.Password))
+     return View();
+
+    user.Password = Utils.Security.HashPassword(user.Password);
+    user.CreatedDateTime = DateTime.UtcNow;
+    user.Active = true;
 
     _context.Add(user);
     await _context.SaveChangesAsync();

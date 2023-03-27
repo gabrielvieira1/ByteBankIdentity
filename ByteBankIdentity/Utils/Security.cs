@@ -8,9 +8,9 @@ namespace ByteBankIdentity.Utils
   {
    return BCrypt.Net.BCrypt.EnhancedHashPassword(password, 14);
   }
-  public static bool VerifyHashedPassword(string password, string enhancedHashPassword)
+  public static bool VerifyHashedPassword(string password, string hashedPassword)
   {
-   return BCrypt.Net.BCrypt.EnhancedVerify(password, enhancedHashPassword);
+   return BCrypt.Net.BCrypt.EnhancedVerify(password, hashedPassword);
   }
  }
 }

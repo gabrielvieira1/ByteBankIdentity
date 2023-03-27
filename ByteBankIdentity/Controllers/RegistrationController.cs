@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using ByteBankIdentity.Data;
 using ByteBankIdentity.Models;
 using ByteBankIdentity.Utils;
+using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ByteBankIdentity.Controllers
 {
@@ -79,6 +81,49 @@ namespace ByteBankIdentity.Controllers
     return RedirectToAction(nameof(Index));
    }
    return View(user);
+  }
+
+  // GET: Registration/Login
+  public IActionResult Login()
+  {
+   return View();
+  }
+
+  // POST: Registration/Login
+  // To protect from overposting attacks, enable the specific properties you want to bind to.
+  // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  public IActionResult Login([Bind("Email,Password")] User userModel)
+  {
+   if (ModelState.IsValid)
+   {
+    try
+    {
+     if (!Utils.String.EmailIsValid(userModel.Email))
+      return View();
+
+     if (string.IsNullOrEmpty(userModel.Password))
+      return View();
+
+     var email = new SqlParameter("Email", userModel.Email);
+     var user = _context.Users.FromSql($"select * from Users where Email = {email}").FirstOrDefault();
+
+     if (user == null)
+      return NotFound();
+
+     var checkpassword = Utils.Security.VerifyHashedPassword(userModel.Password, user.Password);
+     if (!checkpassword)
+      return View();
+    }
+    catch (Exception ex)
+    {
+     var message = ex.Message;
+     throw new Exception(message);
+    }
+    return RedirectToAction(nameof(Index));
+   }
+   return View();
   }
 
   // GET: Registration/Edit/5

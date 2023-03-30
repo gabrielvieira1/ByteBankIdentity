@@ -10,6 +10,9 @@ using ByteBankIdentity.Models;
 using ByteBankIdentity.Utils;
 using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.VisualBasic;
+using System.Net;
+using System.Diagnostics;
 
 namespace ByteBankIdentity.Controllers
 {
@@ -61,26 +64,33 @@ namespace ByteBankIdentity.Controllers
   [ValidateAntiForgeryToken]
   public async Task<IActionResult> Create([Bind("Name,Email,Password")] User user)
   {
+   if (!Utils.String.InputIsValid(user.Name))
+    ModelState.AddModelError("name", "Name invalid");
+
+   if (!Utils.String.EmailIsValid(user.Email))
+    ModelState.AddModelError("email", "Email invalid");
+
+   if (!Security.PasswordIsValid(user.Password))
+    ModelState.AddModelError("password", "Password invalid");
+
    if (ModelState.IsValid)
    {
-    if (!Utils.String.InputIsValid(user.Name))
-     return View();
+    try
+    {
+     user.Password = Utils.Security.HashPassword(user.Password);
+     user.Active = true;
 
-    if (!Utils.String.EmailIsValid(user.Email))
-     return View();
-
-    if (string.IsNullOrEmpty(user.Password))
-     return View();
-
-    user.Password = Utils.Security.HashPassword(user.Password);
-    user.CreatedDateTime = DateTime.UtcNow;
-    user.Active = true;
-
-    _context.Add(user);
-    await _context.SaveChangesAsync();
-    return RedirectToAction(nameof(Index));
+     _context.Add(user);
+     await _context.SaveChangesAsync();
+     TempData["success"] = "User created successfully";
+     return RedirectToAction(nameof(Index));
+    }
+    catch (DbUpdateConcurrencyException ex)
+    {
+     return RedirectToAction(nameof(Error), new { message = BadRequest().StatusCode });
+    }
    }
-   return View(user);
+   return View();
   }
 
   // GET: Registration/Login
@@ -94,36 +104,44 @@ namespace ByteBankIdentity.Controllers
   // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
   [HttpPost]
   [ValidateAntiForgeryToken]
-  public IActionResult Login([Bind("Email,Password")] User userModel)
+  public async Task<IActionResult> Login(User userModel)
   {
-   if (ModelState.IsValid)
+   if (userModel != null)
    {
     try
     {
      if (!Utils.String.EmailIsValid(userModel.Email))
+     {
+      ModelState.AddModelError("email", "Invalid email");
       return View();
-
-     if (string.IsNullOrEmpty(userModel.Password))
-      return View();
-
+     }
      var email = new SqlParameter("Email", userModel.Email);
-     var user = _context.Users.FromSql($"select * from Users where Email = {email}").FirstOrDefault();
+     var user = await _context.Users.FromSql($"select * from Users where Email = {email}").FirstOrDefaultAsync();
 
      if (user == null)
-      return NotFound();
-
-     var checkpassword = Utils.Security.VerifyHashedPassword(userModel.Password, user.Password);
-     if (!checkpassword)
+     {
+      TempData["error"] = "Login failed: Invalid email or password.";
       return View();
+     }
+
+     if (!Security.VerifyHashedPassword(userModel.Password, user.Password))
+     {
+      TempData["error"] = "Login failed: Invalid email or password.";
+      return View();
+     }
+
+     TempData["success"] = "Login successfully";
+     return RedirectToAction(nameof(Index));
     }
     catch (Exception ex)
     {
-     var message = ex.Message;
-     throw new Exception(message);
+     return RedirectToAction(nameof(Error), new { message = BadRequest().StatusCode });
     }
-    return RedirectToAction(nameof(Index));
    }
-   return View();
+   else
+   {
+    return RedirectToAction(nameof(Error), new { message = BadRequest().StatusCode });
+   }
   }
 
   // GET: Registration/Edit/5
@@ -217,6 +235,15 @@ namespace ByteBankIdentity.Controllers
   private bool UserExists(int id)
   {
    return (_context.Users?.Any(e => e.Id == id)).GetValueOrDefault();
+  }
+  public IActionResult Error(string message)
+  {
+   var viewModel = new ErrorViewModel
+   {
+    Message = message,
+    RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+   };
+   return View(viewModel);
   }
  }
 }

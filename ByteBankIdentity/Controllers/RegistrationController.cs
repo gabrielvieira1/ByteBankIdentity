@@ -33,7 +33,7 @@ namespace ByteBankIdentity.Controllers
                Problem("Entity set 'ApplicationDbContext.Users'  is null.");
   }
 
-  // GET: Registration/Details/5
+  // GET: Registration/Details/6
   public async Task<IActionResult> Details(int? id)
   {
    if (id == null || _context.Users == null)
